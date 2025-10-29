@@ -1,3 +1,8 @@
+v0.4.1
+=========
+
+- Updates to support the latest version of Quick Insert for Foundry V12 compatibility.
+
 v0.4.0
 =========
 

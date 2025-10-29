@@ -666,15 +666,16 @@ async function findItem(itemName, itemType, alreadyUnbranded = false) {
     //     ` found next best matches with ${bestMatchQuality} indices:`, bestMatches);
 
     function openSearchDialogue(resolve, reject, retries = 0) {
-        if (!(QuickInsert.app._state === -1 || QuickInsert.app._state === 0)) {
+        if (QuickInsert.app.rendered || QuickInsert.app.visible) {
             if (retries > 20) {
-                reject("Unable to open Quick Insert after 2 seconds.");
+                reject("Quick Insert was already open, unable to launch Quick Insert after 2 seconds.");
             }
             setTimeout(() => openSearchDialogue(resolve, reject, retries + 1), 100);
             return;
         }
         try {
             QuickInsert.open({
+                mode: 1, // Insert Mode, required to get onSubmit
                 classes: ["cpr-character-importer-quick-insert-item"],
                 startText: normalized,
                 allowMultiple: false,
