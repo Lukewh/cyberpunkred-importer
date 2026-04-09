@@ -55,7 +55,7 @@ function isQuickInsertAvailable() {
 
 let currentImporter;
 
-class CharacterImporter extends foundry.applications.api.ApplicationV2 {
+class CharacterImporter extends foundry.applications.api.HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
     constructor(options = {}) {
         super(options);
         this.actor = options.actor;
@@ -72,24 +72,39 @@ class CharacterImporter extends foundry.applications.api.ApplicationV2 {
         position: {
             width: 450,
             height: "auto"
+        },
+        forms: {
+            submitOnChange: false,
+            closeOnSubmit: true,
+            handler: CharacterImporter.#onSubmit
         }
     }
 
-    async _renderHTML(context, options) {
-        return `
-        <div class="character-import-form">
-            <p>Enter Character Export Code:</p>
-            <input name="code" class="character-import-code" type="text" maxlength="6" autofocus>
-            <div class="character-import-text">
-                <div class="character-import-name">&nbsp;</div>
-                <div class="character-import-message">&nbsp;</div>
-            </div>
-            <footer class="sheet-footer">
-                <button type="submit" name="import" disabled>
-                    <i class="fas fa-cloud-download-alt"></i> Import Character
-                </button>
-            </footer>
-        </div>`;
+    static PARTS = {
+        form: {
+            template: "modules/cyberpunkred-importer/templates/importer.hbs"
+        }
+    }
+
+    async _prepareContext(options) {
+        return {
+            actor: this.actor
+        };
+    }
+
+    static async #onSubmit(event, form, formData) {
+        const application = this;
+        if (!application.characterData) return;
+        const submitBtn = form.querySelector('button[name="import"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Importing...";
+        try {
+            await importCharacter(application.characterData, application.actor);
+        } catch (err) {
+            console.error(err);
+            ui.notifications.error("Import failed: " + err.message);
+            throw err;
+        }
     }
 
     _onRender(context, options) {
@@ -148,22 +163,6 @@ class CharacterImporter extends foundry.applications.api.ApplicationV2 {
                     nameDisplay.style.color = "";
                 }
                 messageDisplay.innerHTML = '&nbsp;';
-            }
-        });
-
-        html.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            if (!this.characterData) return;
-            submitBtn.disabled = true;
-            submitBtn.textContent = "Importing...";
-            try {
-                await importCharacter(this.characterData, this.actor);
-                this.close();
-            } catch (err) {
-                console.error(err);
-                ui.notifications.error("Import failed: " + err.message);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Import Character';
             }
         });
     }

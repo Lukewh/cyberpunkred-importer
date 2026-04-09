@@ -2,7 +2,7 @@
   "id": "cyberpunkred-importer",
   "title": "Cyberpunk RED Importer",
   "description": "Import character data from cyberpunkred.com",
-  "version": "#{VERSION}#",
+  "version": "0.5.0",
   "library": "false",
   "compatibility": {
     "minimum": "12",
@@ -50,9 +50,9 @@
       "path": "languages/en.json"
     }
   ],
-  "url": "#{URL}#",
-  "manifest": "#{MANIFEST}#",
-  "download": "#{DOWNLOAD}#",
+  "url": "https://github.com/Lukewh/cyberpunkred-importer",
+  "manifest": "https://raw.githubusercontent.com/Lukewh/cyberpunkred-importer/master/module.json",
+  "download": "https://github.com/Lukewh/cyberpunkred-importer/archive/refs/heads/master.zip",
   "license": "LICENSE",
   "readme": "README.md"
 }
