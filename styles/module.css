@@ -1,22 +1,49 @@
+.character-import-form {
+    padding: 0.5rem;
+}
+
+.character-import-code {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
 .character-import-text {
     min-height: 5em;
     margin-bottom: 1em;
 }
 
-.character-import-message {
-    font-size: 0.8rem;
-    font-style: italic;
-    text-align: center;
-    color: darkred;
+.character-import-name {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
 }
 
 .character-import-name.invalid-code {
-    color: darkred;
+    color: var(--color-error);
+}
+
+.character-import-message {
+    font-size: 0.85rem;
+    font-style: italic;
+    text-align: center;
+    color: var(--color-warm-3);
+}
+
+.character-import-form .sheet-footer {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.character-import-form button[name="import"] {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 0.5rem 1rem;
 }
 
 .cpr-character-importer-quick-insert-item::after {
     font-size: 1.3rem;
     content: "Ambiguous item to import, please select the correct one (or press escape to skip):";
-    background-color: #ddd;
+    background-color: var(--color-bg);
     padding: 0.3em;
 }

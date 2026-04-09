@@ -49,94 +49,138 @@ function isUsingMookSheet(actor) {
     return currentSheetClass === 'cyberpunk-red-core.CPRMookActorSheet';
 }
 
-let currentDialog;
-
 function isQuickInsertAvailable() {
     return window.QuickInsert !== undefined;
 }
 
-function startImport(sheet) {
-    if (currentDialog !== undefined) {
-        currentDialog.close();
+let currentImporter;
+
+class CharacterImporter extends foundry.applications.api.ApplicationV2 {
+    constructor(options = {}) {
+        super(options);
+        this.actor = options.actor;
+        this.characterData = null;
     }
-    const newDialog = new Dialog({
-        title: 'Import Character from cyberpunkred.com',
-        content: `Enter Character Export Code:
-    <input class="character-import-code"><br>
-    <div class="character-import-text">
-      <div class="character-import-name">&nbsp;</div>
-      <div class="character-import-message">&nbsp;</div>
-    </div>`,
-        buttons: {
-            import: {
-                icon:  '<i class="fas fa-cloud-download-alt"></i>',
-                label: 'Import Character',
-                callback: async (html) => {
-                    const data = html.find('button').data('characterData')
-                    if (!data) return;
-                    await importCharacter(data, sheet.object)
-                }
-            }
-        },
-        close: html => {
-          if (currentDialog === newDialog) {
-              currentDialog = undefined;
-          }
-        },
-        render: html => {
-            const button = html.find('button');
-            const nameDisplay = html.find('.character-import-name')
-            button.prop('disabled', true);
 
-            let lastCode = '';
-            html.find('.character-import-code').on('keyup change', async (e) => {
-                const code = $(e.target).val();
-                if (code === lastCode) return;
-                lastCode = code;
-                if (/[A-Z0-9]{6}/.test(code)) {
-                    nameDisplay.text('Loading data...');
-                    nameDisplay.removeClass('invalid-code');
-                    try {
-                        const characterData = await loadCharacter(code);
-                        button.data('characterData', characterData);
-                        button.prop('disabled', false);
-                        const characterType = getCharacterType(characterData);
-                        nameDisplay.text(`${characterType} to Import: ${characterData.name}`);
-
-                        const importMessages = [];
-                        if (isV2Character(characterData) && !isQuickInsertAvailable()) {
-                            importMessages.push('This character was exported from the updated app.' +
-                                ' Importing items such as gear, cyberware, weapons, etc, requires the' +
-                                ' Quick Insert module to be installed and enabled.');
-                        }
-                        if (isUsingMookSheet(sheet.object)) {
-                            importMessages.push(
-                                'This actor is currently using the Mook sheet. In order to import' +
-                                ' successfully, this actor will be temporarily set to use the player' +
-                                ' character sheet during the import process then restored at the end.');
-                        }
-                        html.find('.character-import-message').html(
-                            importMessages.length > 0 ? importMessages.join('<br>') : '&nbsp;');
-                    } catch (e) {
-                        console.error(e);
-                        nameDisplay.text(e);
-                        nameDisplay.addClass('invalid-code');
-                        button.prop('disabled', true);
-                    }
-                } else {
-                    button.prop('disabled', true);
-                    if (code.length > 0) {
-                        nameDisplay.text('Invalid code');
-                        nameDisplay.addClass('invalid-code');
-                    } else {
-                        nameDisplay.text('');
-                    }
-                }
-            })
+    static DEFAULT_OPTIONS = {
+        tag: "form",
+        window: {
+            title: "Import Character from cyberpunkred.com",
+            icon: "fas fa-cloud-download-alt",
+            resizable: true
+        },
+        position: {
+            width: 450,
+            height: "auto"
         }
-    });
-    currentDialog = newDialog;
-    newDialog.render(true);
+    }
+
+    async _renderHTML(context, options) {
+        return `
+        <div class="character-import-form">
+            <p>Enter Character Export Code:</p>
+            <input name="code" class="character-import-code" type="text" maxlength="6" autofocus>
+            <div class="character-import-text">
+                <div class="character-import-name">&nbsp;</div>
+                <div class="character-import-message">&nbsp;</div>
+            </div>
+            <footer class="sheet-footer">
+                <button type="submit" name="import" disabled>
+                    <i class="fas fa-cloud-download-alt"></i> Import Character
+                </button>
+            </footer>
+        </div>`;
+    }
+
+    _onRender(context, options) {
+        const html = this.element;
+        const input = html.querySelector(".character-import-code");
+        const nameDisplay = html.querySelector(".character-import-name");
+        const messageDisplay = html.querySelector(".character-import-message");
+        const submitBtn = html.querySelector('button[name="import"]');
+
+        let lastCode = '';
+        input.addEventListener("input", async (e) => {
+            const code = e.target.value.toUpperCase();
+            if (code === lastCode) return;
+            lastCode = code;
+
+            if (/[A-Z0-9]{6}/.test(code)) {
+                nameDisplay.textContent = 'Loading data...';
+                nameDisplay.classList.remove('invalid-code');
+                nameDisplay.style.color = "";
+                submitBtn.disabled = true;
+                try {
+                    this.characterData = await loadCharacter(code);
+                    submitBtn.disabled = false;
+                    const characterType = getCharacterType(this.characterData);
+                    nameDisplay.textContent = `${characterType} to Import: ${this.characterData.name}`;
+
+                    const importMessages = [];
+                    if (isV2Character(this.characterData) && !isQuickInsertAvailable()) {
+                        importMessages.push('This character was exported from the updated app.' +
+                            ' Importing items such as gear, cyberware, weapons, etc, requires the' +
+                            ' Quick Insert module to be installed and enabled.');
+                    }
+                    if (isUsingMookSheet(this.actor)) {
+                        importMessages.push(
+                            'This actor is currently using the Mook sheet. In order to import' +
+                            ' successfully, this actor will be temporarily set to use the player' +
+                            ' character sheet during the import process then restored at the end.');
+                    }
+                    messageDisplay.innerHTML = importMessages.length > 0 ? importMessages.join('<br>') : '&nbsp;';
+                } catch (err) {
+                    console.error(err);
+                    nameDisplay.textContent = err.message || err;
+                    nameDisplay.classList.add('invalid-code');
+                    nameDisplay.style.color = "var(--color-error)";
+                    submitBtn.disabled = true;
+                }
+            } else {
+                submitBtn.disabled = true;
+                if (code.length > 0) {
+                    nameDisplay.textContent = 'Invalid code';
+                    nameDisplay.classList.add('invalid-code');
+                    nameDisplay.style.color = "var(--color-error)";
+                } else {
+                    nameDisplay.textContent = '';
+                    nameDisplay.classList.remove('invalid-code');
+                    nameDisplay.style.color = "";
+                }
+                messageDisplay.innerHTML = '&nbsp;';
+            }
+        });
+
+        html.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!this.characterData) return;
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Importing...";
+            try {
+                await importCharacter(this.characterData, this.actor);
+                this.close();
+            } catch (err) {
+                console.error(err);
+                ui.notifications.error("Import failed: " + err.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Import Character';
+            }
+        });
+    }
+
+    _onClose() {
+        if (currentImporter === this) {
+            currentImporter = undefined;
+        }
+    }
+}
+
+function startImport(sheet) {
+    if (currentImporter) {
+        currentImporter.close();
+    }
+    currentImporter = new CharacterImporter({ actor: sheet.object });
+    currentImporter.render(true);
 }
 
 async function importCharacter(data, actor) {
